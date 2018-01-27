@@ -75,7 +75,6 @@ vy_exact = []
 norm = 0
 
 # some window modifiers
-# TODO: remove this
 diffx=50
 diffy=100
 
@@ -360,15 +359,11 @@ class TaskWidget (QWidget):
           maxx = 1
 
         maxy = max(y_exact)
-        if maxy == 0:
-          maxy = 1
-
         miny = min(y_exact)
-        if miny == 0:
-          miny = 1
+        if maxy == miny:
+          maxy = miny + 1
 
         self.shiftx = (window_sizex - 2*diffx) / maxx
-        # TODO: make 4*max(y[0], y_exact[0]) or even max(y, y_exact)
         self.shifty = (window_sizey - 2*diffy) / (maxy - miny)
 
 
