@@ -4,7 +4,7 @@
 # import system libs
 # подключение системных библиотек
 import sys
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLineEdit, QCheckBox
+from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLineEdit, QCheckBox, QComboBox
 from PyQt5.QtGui import QPainter, QColor, QPen
 from PyQt5.QtCore import Qt, QPointF
 from math import exp
@@ -37,6 +37,10 @@ y0 = 10.0
 vx0 = 1.0
 vy0 = 0.0
 
+# order of accuracy of numerical method
+# порядок точности численного метода
+orderOfAccuracy = 1
+
 # flag, whether to use air resistance
 # флаг, использовать ли сопротивление воздуха
 useAirResistance = True
@@ -51,7 +55,7 @@ window0y = 50
 window_sizex = 950
 window_sizey = 700
 
-# lists with numerical values 
+# lists with numerical values
 # списки со значениями координат, полученных численно
 x = []
 y = []
@@ -59,7 +63,7 @@ y = []
 vx = []
 vy = []
 
-# lists with exact values 
+# lists with exact values
 # списки со значениями координат, полученных из точного решения
 x_exact = []
 y_exact = []
@@ -74,7 +78,7 @@ diffy=100
 
 # function to calculate numerically with air resistance
 # функция для численного расчета с учетом сопротивления воздуха
-def calculate_k1 (N, dt, k, m, x0, y0, vx0, vy0):
+def calculate_k1 (N, dt, k, m, x0, y0, vx0, vy0, order):
   global x, y, vx, vy
 
   x = [0] * N
@@ -88,12 +92,24 @@ def calculate_k1 (N, dt, k, m, x0, y0, vx0, vy0):
   vy[0] = vy0
 
   for i in range (1,N):
-    vx[i] = vx[i-1] - k/m * vx[i-1] * dt
-    vy[i] = vy[i-1] - (g + k/m * vy[i-1]) * dt
+    if order == 1:
+      # метод Эйлера первого порялка точности
+      vx[i] = vx[i-1] - k/m * vx[i-1] * dt
+      vy[i] = vy[i-1] - (g + k/m * vy[i-1]) * dt
+    elif order == 2:
+      # метод Рунге-Кутта второго порядка точности
+      vx[i] = vx[i-1] * (1 - k/m * dt + 0.5 * (k/m * dt) ** 2)
+      vy[i] = (k/m * g * (dt)**2 / 2 - dt * g) + vy[i-1] * (1 - k/m * dt + 0.5 * (k/m * dt) ** 2)
 
   for i in range (1,N):
-    x[i] = x[i-1] + vx[i] * dt
-    y[i] = y[i-1] + vy[i] * dt
+    if order == 1:
+      # метод Эйлера первого порялка точности
+      x[i] = x[i-1] + vx[i] * dt
+      y[i] = y[i-1] + vy[i] * dt
+    elif order == 2:
+      # метод Рунге-Кутта второго порядка точности
+      x[i] = x[i-1] + dt/2 * (vx[i] + vx[i-1])
+      y[i] = y[i-1] + dt/2 * (vy[i] + vy[i-1])
 
 # function to calculate exact with air resistance
 # функция для точного расчета с учетом сопротивления воздуха
@@ -113,7 +129,7 @@ def calculate_k1_exact (N, dt, k, m, x0, y0, vx0, vy0):
 
 # function to calculate numerically without air resistance
 # функция для численного расчета без учета сопротивления воздуха
-def calculate_k0 (N, dt, x0, y0, vx0, vy0):
+def calculate_k0 (N, dt, x0, y0, vx0, vy0, order):
   global x, y, vx, vy
 
   x = [0] * N
@@ -131,8 +147,14 @@ def calculate_k0 (N, dt, x0, y0, vx0, vy0):
     vy[i] = vy[i-1] - g * dt
 
   for i in range (1,N):
-    x[i] = x[i-1] + vx[i] * dt
-    y[i] = y[i-1] + vy[i] * dt
+    if order == 1:
+      # метод Эйлера первого порялка точности
+      x[i] = x[i-1] + vx[i] * dt
+      y[i] = y[i-1] + vy[i] * dt
+    elif order == 2:
+      # метод Рунге-Кутта второго порядка точности
+      x[i] = x[i-1] + dt/2 * (vx[i] + vx[i-1])
+      y[i] = y[i-1] + dt/2 * (vy[i] + vy[i-1])
 
 # function to calculate exact without air resistance
 # функция для точного расчета без учета сопротивления воздуха
@@ -152,11 +174,11 @@ def calculate_k0_exact (N, dt, x0, y0, vx0, vy0):
 
 # function to calculate numerically
 # функция для численного расчета
-def calculate (N, dt, k, m, x0, y0, vx0, vy0):
+def calculate (N, dt, k, m, x0, y0, vx0, vy0, order):
   if useAirResistance:
-    calculate_k1 (N, dt, k, m, x0, y0, vx0, vy0)
+    calculate_k1 (N, dt, k, m, x0, y0, vx0, vy0, order)
   else:
-    calculate_k0 (N, dt, x0, y0, vx0, vy0)
+    calculate_k0 (N, dt, x0, y0, vx0, vy0, order)
 
 # function to calculate exact
 # функция для точного расчета
@@ -182,12 +204,17 @@ class TaskWidget (QWidget):
         # вызываем функцию, создающую графический интерфейс
         self.initUI()
 
+    # функция для обработки выбора численного метода
+    def change_order (self, index):
+      global orderOfAccuracy
+      orderOfAccuracy = index + 1
+
 
     # button click handler
     # функция для обработки нажатия кнопки
     def button_click (self):
       global N, dt, k, m, x0, y0, vx0, vy0, useAirResistance
-      
+
       # get values from editor windows
       # получаем введенные значения
       N=int(self.le1.text())
@@ -208,9 +235,9 @@ class TaskWidget (QWidget):
 
       # calculate numerical and exact solutions
       # вычисляем численное и точное решения
-      calculate (N, dt, k, m, x0, y0, vx0, vy0)
+      calculate (N, dt, k, m, x0, y0, vx0, vy0, orderOfAccuracy)
       calculate_exact (N, dt, k, m, x0, y0, vx0, vy0)
-      
+
       # update GUI
       # обновляем интерфейс
       self.update()
@@ -220,7 +247,7 @@ class TaskWidget (QWidget):
     # функция для обработки переключения режима расчета с/без сопротивлением воздуха
     def changeUseAirResistance (self, state):
       global useAirResistance
-      
+
       # set mode according to toggle
       # задаем режим согласно переключателю в графическом интерфейсе
       if state == Qt.Checked:
@@ -252,6 +279,11 @@ class TaskWidget (QWidget):
         self.pb = QPushButton("Расчет", self)
         self.pb.move (20, 10)
         self.pb.clicked.connect(self.button_click)
+
+        self.сb = QComboBox(self)
+        self.сb.addItems(['Первый порядок точности', 'Второй порядок точности'])
+        self.сb.move (20, 40)
+        self.сb.currentIndexChanged.connect(self.change_order)
 
         # edit fields
         # поля для ввода параметров
@@ -286,7 +318,7 @@ class TaskWidget (QWidget):
         self.le8 = QLineEdit(str(vy0), self)
         self.le8.move (830, 10)
         self.le8.setFixedWidth (50)
-        
+
         # show widget
         # показать виджет
         self.show()
@@ -310,11 +342,11 @@ class TaskWidget (QWidget):
         maxx = max(x_exact)
         if maxx == 0:
           maxx = 1
-          
+
         maxy = max(y_exact)
         if maxy == 0:
           maxy = 1
-          
+
         miny = min(y_exact)
         if miny == 0:
           miny = 1
@@ -340,11 +372,11 @@ class TaskWidget (QWidget):
         qp.drawText (QPointF(603, 28), "y0=")
         qp.drawText (QPointF(697, 28), "vx0=")
         qp.drawText (QPointF(797, 28), "vy0=")
-        
+
         pen = QPen(Qt.red, 2, Qt.SolidLine)
         qp.setPen(pen)
         qp.drawText (QPointF(700, 60), "Численное решение")
-        
+
         pen = QPen(Qt.green, 2, Qt.SolidLine)
         qp.setPen(pen)
         qp.drawText (QPointF(700, 80), "Точное решение")
@@ -415,16 +447,16 @@ if __name__ == '__main__':
     # create application
     # создание объекта приложения
     app = QApplication(sys.argv)
-    
+
     # calculate with default values
     # вычисление с начальными параметрами
-    calculate(N, dt, k, m, x0, y0, vx0, vy0)
+    calculate(N, dt, k, m, x0, y0, vx0, vy0, orderOfAccuracy)
     calculate_exact(N, dt, k, m, x0, y0, vx0, vy0)
-    
+
     # create TaskWidget object and call its constructor
     # создаем объект TaskWidget и вызываем его конструктор
     ex = TaskWidget ()
-    
+
     # launch app cycle
     # запуск основного цикла событий
     sys.exit(app.exec_())
