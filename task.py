@@ -7,7 +7,7 @@ import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLineEdit, QCheckBox, QComboBox
 from PyQt5.QtGui import QPainter, QColor, QPen
 from PyQt5.QtCore import Qt, QPointF
-from math import exp
+from math import exp, sqrt
 
 # constants
 # константы
@@ -71,10 +71,25 @@ y_exact = []
 vx_exact = []
 vy_exact = []
 
+# Норма разности точного и численного решений
+norm = 0
+
 # some window modifiers
 # TODO: remove this
 diffx=50
 diffy=100
+
+# функция для расчета нормы разности точного и численного решения
+def calculate_norm ():
+  global x, y, x_exact, y_exact, norm
+
+  norm = 0
+
+  for i in range (1,N):
+    norm += (y[i] - y_exact[i]) ** 2
+
+  norm = sqrt(norm)
+
 
 # function to calculate numerically with air resistance
 # функция для численного расчета с учетом сопротивления воздуха
@@ -237,6 +252,7 @@ class TaskWidget (QWidget):
       # вычисляем численное и точное решения
       calculate (N, dt, k, m, x0, y0, vx0, vy0, orderOfAccuracy)
       calculate_exact (N, dt, k, m, x0, y0, vx0, vy0)
+      calculate_norm()
 
       # update GUI
       # обновляем интерфейс
@@ -381,6 +397,10 @@ class TaskWidget (QWidget):
         qp.setPen(pen)
         qp.drawText (QPointF(700, 80), "Точное решение")
 
+        pen = QPen(Qt.red, 4, Qt.SolidLine)
+        qp.setPen(pen)
+        qp.drawText (QPointF(20, 650), "Норма разности точного и численного решений: " + str(norm))
+
 
     # paint of widget
     # функция рисования для виджета
@@ -452,6 +472,7 @@ if __name__ == '__main__':
     # вычисление с начальными параметрами
     calculate(N, dt, k, m, x0, y0, vx0, vy0, orderOfAccuracy)
     calculate_exact(N, dt, k, m, x0, y0, vx0, vy0)
+    calculate_norm()
 
     # create TaskWidget object and call its constructor
     # создаем объект TaskWidget и вызываем его конструктор
